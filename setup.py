@@ -11,5 +11,9 @@ setup(
     description='This Library simplifies messaging queue integrations in Python. '
                 'It supports RabbitMQ at this point, having a wrapper over '
                 'pika which is the officially recommended client for Rabbit MQ.',
-    install_requires=['pika>=1.2.0', 'pydantic>=1.9.0']
+    install_requires=[
+        'pika==1.3.1',
+        'pydantic==1.10.5',
+        'starlette==0.25.0'
+    ]
 )

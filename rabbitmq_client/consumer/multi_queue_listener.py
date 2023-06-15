@@ -2,6 +2,7 @@ import logging
 from abc import ABCMeta
 from typing import List
 
+from rabbitmq_client.consumer.health_utils import set_consumer_status
 from rabbitmq_client.consumer.poller import QueueListener
 from rabbitmq_client.queue_config import ListenQueueConfig
 
@@ -33,4 +34,5 @@ class MultiQueueListener(object):
     def listen(self):
         """Start listeners threads."""
         logging.debug('Registering listeners on all queues')
+        set_consumer_status(is_healthy=True)
         self._start_listeners()
