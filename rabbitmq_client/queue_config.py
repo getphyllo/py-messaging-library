@@ -1,3 +1,5 @@
+from typing import Optional
+
 from pydantic import BaseModel
 
 from rabbitmq_client.broker_config import BrokerConfig
@@ -16,6 +18,8 @@ class PublishQueueConfig(BaseQueueConfig):
 class ListenQueueConfig(BaseQueueConfig):
     name: str
     handler: BaseHandler
+    requeue_on_failure: Optional[bool] = True
+    error_queue: Optional[PublishQueueConfig]
 
     class Config:
         arbitrary_types_allowed = True
