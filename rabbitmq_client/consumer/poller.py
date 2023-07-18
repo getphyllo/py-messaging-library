@@ -105,7 +105,7 @@ class QueueListener(Thread):
             delivery_tag = method.delivery_tag
             thread_pool_executor.submit(do_work, conn, ch, method, properties, delivery_tag, body)
 
-        channel.basic_qos(prefetch_count=1)
+        channel.basic_qos(prefetch_count=settings.PREFETCH_COUNT)
 
         thread_pool_executor_kwargs = {}
         if settings.THREAD_POOL_WORKER_COUNT is not None:
