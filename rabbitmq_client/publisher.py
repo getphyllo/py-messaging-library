@@ -34,14 +34,18 @@ class Publisher:
             raise DuplicateSerializerError(f"Serializer already assigned with name '{self.serializer.__name__}'")
         self.serializer = func
 
-    def publish(self, queue_config: PublishQueueConfig, payload: dict, headers: Optional[dict] = None):
+    def publish(self, queue_config: PublishQueueConfig, payload: dict, headers: Optional[dict] = None,
+                priority: Optional[int] = 0):
         if headers is None:
             headers = {}
         assert isinstance(queue_config, PublishQueueConfig), \
             f"Expected instance of PublishQueueConfig, passed {type(queue_config)}"
         assert isinstance(payload, dict), \
             f"Expected instance of dict, passed {type(payload)}"
-        assert isinstance(headers, dict), f"Expected instance of dict, passed {type(headers)}"
+        assert isinstance(headers, dict), \
+            f"Expected instance of dict, passed {type(headers)}"
+        assert isinstance(priority, int), \
+            f"Expected instance of int, passed {type(priority)}"
 
         serializer: Callable = self.serializer or default_serializer
         stringified_payload = json.dumps(payload, default=serializer).encode('utf-8')
@@ -50,7 +54,7 @@ class Publisher:
             channel.basic_publish(exchange=queue_config.exchange,
                                   routing_key=queue_config.routing_key,
                                   body=stringified_payload,
-                                  properties=pika.BasicProperties(headers=headers))
+                                  properties=pika.BasicProperties(headers=headers, priority=priority))
 
 
 publisher = Publisher()
