@@ -1,14 +1,14 @@
-import pika
 import ssl
 from typing import Callable
+
+import pika
 
 from rabbitmq_client.broker_config import BrokerConfig
 
 
 def get_async_connection(broker_config: BrokerConfig,
                          on_connection_open: Callable,
-                         on_connection_closed: Callable,
-                         heartbeat: Optional[int] = 60
+                         on_connection_closed: Callable
                          ) -> pika.SelectConnection:
     credentials = pika.PlainCredentials(username=broker_config.username,
                                         password=broker_config.password.get_secret_value(),
@@ -18,7 +18,7 @@ def get_async_connection(broker_config: BrokerConfig,
         'port': broker_config.port,
         'virtual_host': broker_config.vhost,
         'credentials': credentials,
-        'heartbeat': heartbeat,
+        'heartbeat': broker_config.heartbeat,
     }
     if broker_config.ssl_enabled:
         context = ssl.SSLContext(ssl.PROTOCOL_TLSv1_2)
