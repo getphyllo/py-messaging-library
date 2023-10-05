@@ -8,3 +8,4 @@ class BrokerConfig(BaseModel):
     port: int
     vhost: str
     ssl_enabled: bool
+    heartbeat: int = 60
