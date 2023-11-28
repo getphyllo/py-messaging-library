@@ -3,7 +3,12 @@ from setuptools import setup
 setup(
     name='py_messaging_library',
     version='1.0.0',
-    packages=['rabbitmq_client', 'rabbitmq_client/consumer'],
+    packages=[
+        'rabbitmq_client',
+        'rabbitmq_client/async_connection',
+        'rabbitmq_client/consumer',
+        'rabbitmq_client/single_threaded_consumer',
+    ],
     url='',
     license='',
     author='',
