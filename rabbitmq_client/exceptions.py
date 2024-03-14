@@ -1,0 +1,2 @@
+class PublisherException(Exception):
+    pass
