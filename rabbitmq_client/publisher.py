@@ -37,7 +37,7 @@ class Publisher:
         self.serializer = func
 
     def publish(self, queue_config: PublishQueueConfig,
-                payload: Optional[dict] = None, payloadList: List[dict] = None,
+                payload: Optional[dict] = None, payload_list: List[dict] = None,
                 headers: Optional[dict] = None, max_retries: int = 3):
         if headers is None:
             headers = {}
