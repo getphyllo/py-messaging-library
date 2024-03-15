@@ -38,7 +38,7 @@ class Publisher:
 
     def publish(self, queue_config: PublishQueueConfig,
                 payload: Optional[dict] = None, payload_list: List[dict] = None,
-                headers: Optional[dict] = None, max_retries: int = 3):
+                headers: Optional[dict] = None, max_retries: int = 3, priority: Optional[int] = 0):
         if headers is None:
             headers = {}
         assert isinstance(queue_config, PublishQueueConfig), \
@@ -46,18 +46,20 @@ class Publisher:
         assert self.serializer is not None, \
             "Define custom serializer with @publish.register_serializer decorator"
         assert isinstance(headers, dict), f"Expected instance of dict, passed {type(headers)}"
+        assert isinstance(priority, int), \
+            f"Expected instance of int, passed {type(priority)}"
 
-        if payloadList is None:
-            payloadList = [payload]
+        if payload_list is None:
+            payload_list = [payload]
 
-        for payload_item in payloadList:
+        for payload_item in payload_list:
             assert isinstance(payload_item, dict), \
                 f"Expected instance of dict, passed {type(payload_item)}"
 
         retries = 0
         while retries < max_retries:
             try:
-                self._publish_to_channel(queue_config, payloadList, headers)
+                self._publish_to_channel(queue_config, payload_list, headers, priority)
                 return
             except (pika.exceptions.AMQPConnectionError, pika.exceptions.AMQPChannelError) as retriable_exception:
                 logging.error(f"Got retriable exception {retriable_exception} "
@@ -73,7 +75,7 @@ class Publisher:
                 raise
 
     def _publish_to_channel(self, queue_config: PublishQueueConfig, payloads: List[dict],
-                            headers: Optional[dict] = None):
+                            headers: Optional[dict] = None, priority: Optional[int] = 0):
         with get_connection(queue_config.broker_config) as connection:
             channel = connection.channel()
             for payload in payloads:
@@ -84,7 +86,7 @@ class Publisher:
                     channel.basic_publish(exchange=queue_config.exchange,
                                           routing_key=queue_config.routing_key,
                                           body=stringified_payload,
-                                          properties=pika.BasicProperties(headers=headers))
+                                          properties=pika.BasicProperties(headers=headers, priority=priority))
                 except Exception as e:
                     logging.error(f"Got exception {e} while publishing message to queue {queue_config.routing_key}")
                     raise PublisherException(f"Got exception {e} while publishing message to queue "
