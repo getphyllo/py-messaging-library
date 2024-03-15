@@ -3,8 +3,10 @@ import ssl
 import pika
 
 from rabbitmq_client.broker_config import BrokerConfig
+from rabbitmq_client.decorators import retry_on_exception
 
 
+@retry_on_exception(max_retries=3, delay=1, backoff_factor=2)
 def get_connection(broker_config: BrokerConfig):
     credentials = pika.PlainCredentials(username=broker_config.username,
                                         password=broker_config.password.get_secret_value(),
