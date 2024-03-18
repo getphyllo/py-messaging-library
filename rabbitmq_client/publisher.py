@@ -7,7 +7,6 @@ from uuid import UUID
 import pika
 
 from rabbitmq_client.connection import get_connection
-from rabbitmq_client.exceptions import PublisherException
 from rabbitmq_client.queue_config import PublishQueueConfig
 
 
