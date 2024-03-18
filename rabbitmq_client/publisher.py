@@ -38,16 +38,9 @@ class Publisher:
 
     def publish(self, queue_config: PublishQueueConfig,
                 payload: Optional[dict] = None, payload_list: List[dict] = None,
-                headers: Optional[dict] = None, max_retries: int = 3, priority: Optional[int] = 0):
+                headers: Optional[dict] = None, priority: Optional[int] = 0):
         if headers is None:
             headers = {}
-        assert isinstance(queue_config, PublishQueueConfig), \
-            f"Expected instance of PublishQueueConfig, passed {type(queue_config)}"
-        assert self.serializer is not None, \
-            "Define custom serializer with @publish.register_serializer decorator"
-        assert isinstance(headers, dict), f"Expected instance of dict, passed {type(headers)}"
-        assert isinstance(priority, int), \
-            f"Expected instance of int, passed {type(priority)}"
 
         # Check that either payload or payload_list is provided, but not both None
         if payload is None and (payload_list is None or len(payload_list) == 0):
@@ -56,19 +49,27 @@ class Publisher:
         if payload_list is None or len(payload_list) == 0:
             payload_list = [payload]
 
+        self._validate_publish_arguments(queue_config, payload_list, headers, priority)
+        self._publish_to_channel_atomically(queue_config, payload_list, headers, priority)
+
+    @staticmethod
+    def _validate_publish_arguments(queue_config: PublishQueueConfig, payload_list: Optional[List[dict]],
+                                    headers: dict, priority: int):
+        assert isinstance(queue_config, PublishQueueConfig), "Expected instance of PublishQueueConfig"
+        assert isinstance(headers, dict), "Expected instance of dict for headers"
+        assert isinstance(priority, int), "Expected instance of int for priority"
+
         for payload_item in payload_list:
-            assert isinstance(payload_item, dict), \
-                f"Expected instance of dict, passed {type(payload_item)}"
+            assert isinstance(payload_item, dict), "All items in 'payload_list' must be dictionaries."
 
-        self._publish_to_channel(queue_config, payload_list, headers, priority)
-
-    def _publish_to_channel(self, queue_config: PublishQueueConfig, payloads: List[dict],
-                            headers: Optional[dict] = None, priority: Optional[int] = 0):
+    def _publish_to_channel_atomically(self, queue_config: PublishQueueConfig, payloads: List[dict],
+                                       headers: Optional[dict] = None, priority: Optional[int] = 0):
+        serializer: Callable = self.serializer or default_serializer
         with get_connection(queue_config.broker_config) as connection:
             channel = connection.channel()
             channel.tx_select()
             for payload in payloads:
-                stringified_payload = json.dumps(payload, default=self.serializer).encode('utf-8')
+                stringified_payload = json.dumps(payload, default=serializer).encode('utf-8')
                 # ToDo: Fix this. Below queue_declare raises conflict if it(durable) does not match with definitions.json config
                 # channel.queue_declare(queue=queue_config.name)
                 try:
@@ -78,8 +79,7 @@ class Publisher:
                                           properties=pika.BasicProperties(headers=headers, priority=priority))
                 except Exception as e:
                     logging.error(f"Got exception {e} while publishing message to queue {queue_config.routing_key}")
-                    raise PublisherException(f"Got exception {e} while publishing message to queue "
-                                             f"{queue_config.routing_key} for payload {payload}")
+                    raise
             channel.tx_commit()
 
 
