@@ -51,7 +51,8 @@ class SingleThreadedMultiQueueListener(object):
                 else:
                     logging.warning('Channel closed, unable to ack message')
 
-            asyncio.run(handle_and_ack())
+            loop = asyncio.get_event_loop()
+            loop.create_task(handle_and_ack())
 
         channel.basic_qos(prefetch_count=settings.PREFETCH_COUNT)
         for listen_queue_config in self.listen_queue_configs:
