@@ -38,19 +38,32 @@ class SingleThreadedMultiQueueListener(object):
 
         def on_message(ch: PikaChannel, method: PikaBasic.Deliver,
                        properties: PikaBasicProperties, body: bytes, args):
-            message = json.loads(body.decode('utf8'))
-            loop = asyncio.get_event_loop()
             (handler,) = args
-            loop.run_until_complete(
-                handler.async_handle_message(
-                    method=method, properties=properties, message=message
-                )
-            )
-            if ch.is_open:
-                logging.debug('Channel is open, acknowledging the message')
-                ch.basic_ack(delivery_tag=method.delivery_tag)
-            else:
-                logging.warning('Channel closed unable to ack message')
+            message = json.loads(body.decode('utf8'))
+
+            async def handle_and_ack():
+                try:
+                    await handler.async_handle_message(
+                        method=method, properties=properties, message=message
+                    )
+                    if ch.is_open:
+                        logging.debug('Channel is open, acknowledging the message')
+                        ch.basic_ack(delivery_tag=method.delivery_tag)
+                    else:
+                        logging.warning('Channel closed, unable to ack message')
+                except Exception as e:
+                    logging.exception('Error while handling message: %s', e)
+                    # Optional: Nack the message if you don't want it retried automatically
+                    if ch.is_open:
+                        ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
+                    raise
+
+            try:
+                loop = asyncio.get_event_loop()
+                loop.create_task(handle_and_ack())
+            except RuntimeError as e:
+                logging.exception("No running event loop: %s", e)
+                raise
 
         channel.basic_qos(prefetch_count=settings.PREFETCH_COUNT)
         for listen_queue_config in self.listen_queue_configs:
