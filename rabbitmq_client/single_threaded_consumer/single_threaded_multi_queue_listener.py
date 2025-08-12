@@ -29,11 +29,6 @@ class SingleThreadedMultiQueueListener:
         )
         self.listen_queue_configs = listen_queue_configs
 
-        # Set up a background asyncio event loop for async message handlers
-        self.loop = asyncio.new_event_loop()
-        self.loop_thread = threading.Thread(target=self._start_loop, daemon=True)
-        self.loop_thread.start()
-
     def _start_loop(self):
         asyncio.set_event_loop(self.loop)
         self.loop.run_forever()
@@ -83,13 +78,42 @@ class SingleThreadedMultiQueueListener:
 
     def listen(self):
         try:
+            logging.info('Starting background asyncio event loop for async message handlers')
+            # Set up a
+            self.loop = asyncio.new_event_loop()
+            self.loop_thread = threading.Thread(target=self._start_loop, daemon=True)
+            self.loop_thread.start()
+
             logging.info('Starting IO Loop to listen for messages')
             set_consumer_status(is_healthy=True)
             self.connection.ioloop.start()
         except KeyboardInterrupt:
             logging.info('Keyboard Interrupt Closing')
-            self.connection.close()
+            self.stop()
         except Exception as ex:
             set_consumer_status(is_healthy=False)
-            self.connection.close()
+            self.stop()
             raise ex
+
+    def stop(self):
+        logging.info("Stopping consumer...")
+
+        # Stop pika I/O loop if running
+        try:
+            if self.connection and not self.connection.is_closed:
+                self.connection.close()
+            if self.connection and self.connection.ioloop.is_running:
+                self.connection.ioloop.stop()
+        except Exception as e:
+            logging.warning(f"Error stopping pika loop: {e}")
+
+        # Stop asyncio loop
+        if self.loop and self.loop.is_running():
+            self.loop.call_soon_threadsafe(self.loop.stop)
+
+        # Wait for background loop thread to finish
+        if hasattr(self, "loop_thread") and self.loop_thread.is_alive():
+            self.loop_thread.join(timeout=5)
+
+        logging.info("Consumer stopped.")
+
