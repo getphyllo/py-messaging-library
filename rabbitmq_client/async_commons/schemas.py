@@ -1,6 +1,6 @@
 from pydantic import ConfigDict, BaseModel
 
-from rabbitmq_client.single_threaded_consumer.async_base_handler import AsyncBaseHandler
+from rabbitmq_client.async_commons.async_base_handler import AsyncBaseHandler
 
 
 class ListenQueueConfig(BaseModel):
